@@ -1,0 +1,47 @@
+---
+- hosts: all
+  name: install deepseek
+  tasks:
+    - name: apt update
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400
+
+    - name: install pkgs
+      apt: name={{ item }} state=latest
+      with_items:
+        - git
+        - curl
+        - python3-pip
+
+    - name: deinstall pkgs
+      apt: name={{ item }} state=absent
+      with_items:
+        - python3-typing-extensions
+        - python3-packaging
+        - python3-idna
+        - python3-blinker
+        - python3-blinker-doc
+
+    - name: install ollama
+      raw: curl -fsSL https://ollama.com/install.sh | sh
+
+    - name: enable and start ollama
+      service:                                                                             
+        name: ollama
+        state: started
+        enabled: true
+
+    - name: install webui
+      raw: pip install open-webui --break-system-packages
+
+    - name: run modell
+      shell: ollama run deepseek-r1:7b >/dev/null 2>&1 &
+      async: 10
+      poll: 0
+
+    - name: run webui
+      shell: open-webui serve >/dev/null 2>&1 &
+      async: 10
+      poll: 0
