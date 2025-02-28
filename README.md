@@ -13,4 +13,4 @@ just run (change to your IP number)
 ansible-playbook -i 172.233.28.12, install.yml 
 ```
 
-afterwards, you can connect to http://IP-NUMBER:8080 using a webbrowser
+afterwards, you can connect to http://IP-NUMBER using a webbrowser

@@ -13,16 +13,11 @@
       with_items:
         - git
         - curl
+        - ffmpeg
+        - libsm6
+        - libxext6
         - python3-pip
-
-    - name: deinstall pkgs
-      apt: name={{ item }} state=absent
-      with_items:
-        - python3-typing-extensions
-        - python3-packaging
-        - python3-idna
-        - python3-blinker
-        - python3-blinker-doc
+        - python3-venv
 
     - name: install ollama
       raw: curl -fsSL https://ollama.com/install.sh | sh
@@ -33,15 +28,20 @@
         state: started
         enabled: true
 
-    - name: install webui
-      raw: pip install open-webui --break-system-packages
-
     - name: run modell
       shell: ollama run deepseek-r1:7b >/dev/null 2>&1 &
       async: 10
       poll: 0
 
-    - name: run webui
-      shell: open-webui serve >/dev/null 2>&1 &
-      async: 10
+    - name: Create a Python virtual environment
+      command: python3 -m venv /root/open-webui-venv
+      args:
+        creates: /root/open-webui-venv
+
+    - name: Install Open-WebUI inside the virtual environment
+      command: /root/open-webui-venv/bin/pip install open-webui
+
+    - name: Run Open-WebUI server
+      shell: /root/open-webui-venv/bin/open-webui serve --port 80 &
+      async: 0
       poll: 0
