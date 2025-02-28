@@ -17,6 +17,7 @@
     service_name: open-webui
     user: root
     exec_command: "{{ venv_path }}/bin/open-webui serve --port 80"
+    env_file: /etc/default/open-webui
 
   tasks:
     - name: apt update
@@ -52,6 +53,17 @@
     - name: Install Open-WebUI inside the virtual environment
       command: "{{ venv_path }}/bin/pip install open-webui"
 
+    - name: Create environment file for Open-WebUI
+      copy:
+        dest: "{{ env_file }}"
+        content: |
+          ENABLE_SIGNUP=yes
+          AUTH_ALLOW_REGISTRATION=true
+          WEBUI_AUTH_MODE=local
+          NEXT_PUBLIC_AUTH_DISABLE_SIGNUP=false
+          NEXT_PUBLIC_AUTH_DISABLE_LOGIN=false
+      notify: Restart Open-WebUI
+
     - name: Create systemd service file for Open-WebUI
       copy:
         dest: "/etc/systemd/system/{{ service_name }}.service"
@@ -62,8 +74,7 @@
 
           [Service]
           Type=simple
-          Environment=AUTH_ALLOW_REGISTRATION=true
-          Environment=WEBUI_AUTH_MODE=local
+          EnvironmentFile={{ env_file }}
           ExecStart={{ exec_command }}
           WorkingDirectory={{ venv_path }}
           Restart=always
