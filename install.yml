@@ -62,6 +62,8 @@
 
           [Service]
           Type=simple
+          Environment=AUTH_ALLOW_REGISTRATION=true
+          Environment=WEBUI_AUTH_MODE=local
           ExecStart={{ exec_command }}
           WorkingDirectory={{ venv_path }}
           Restart=always
@@ -69,6 +71,7 @@
 
           [Install]
           WantedBy=multi-user.target
+      notify: Restart Open-WebUI
 
     - name: Reload systemd daemon
       command: systemctl daemon-reload
@@ -78,3 +81,9 @@
         name: "{{ service_name }}"
         enabled: yes
         state: started
+
+  handlers:
+    - name: Restart Open-WebUI
+      systemd:
+        name: "{{ service_name }}"
+        state: restarted
