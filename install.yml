@@ -1,6 +1,23 @@
 ---
 - hosts: all
   name: install deepseek
+  become: yes
+  vars:
+    python_packages:
+      - python3
+      - python3-venv
+      - python3-pip
+    system_packages:
+      - git
+      - curl
+      - ffmpeg
+      - libsm6
+      - libxext6
+    venv_path: /root/open-webui-venv
+    service_name: open-webui
+    user: root
+    exec_command: "{{ venv_path }}/bin/open-webui serve --port 80"
+
   tasks:
     - name: apt update
       apt:
@@ -9,15 +26,9 @@
         cache_valid_time: 86400
 
     - name: install pkgs
-      apt: name={{ item }} state=latest
-      with_items:
-        - git
-        - curl
-        - ffmpeg
-        - libsm6
-        - libxext6
-        - python3-pip
-        - python3-venv
+      apt:
+        name: "{{ system_packages }}"
+        state: present
 
     - name: install ollama
       raw: curl -fsSL https://ollama.com/install.sh | sh
@@ -28,22 +39,22 @@
         state: started
         enabled: true
 
-    - name: run modell
+    - name: run model
       shell: ollama run deepseek-r1:7b >/dev/null 2>&1 &
       async: 10
       poll: 0
 
     - name: Create a Python virtual environment
-      command: python3 -m venv /root/open-webui-venv
+      command: python3 -m venv "{{ venv_path }}"
       args:
-        creates: /root/open-webui-venv
+        creates: "{{ venv_path }}"
 
     - name: Install Open-WebUI inside the virtual environment
-      command: /root/open-webui-venv/bin/pip install open-webui
+      command: "{{ venv_path }}/bin/pip install open-webui"
 
     - name: Create systemd service file for Open-WebUI
       copy:
-        dest: /etc/systemd/system/open-webui.service
+        dest: "/etc/systemd/system/{{ service_name }}.service"
         content: |
           [Unit]
           Description=Open-WebUI Service
@@ -51,10 +62,10 @@
 
           [Service]
           Type=simple
-          ExecStart=/root/open-webui-venv/bin/open-webui serve --port 80
-          WorkingDirectory=/root/open-webui-venv
+          ExecStart={{ exec_command }}
+          WorkingDirectory={{ venv_path }}
           Restart=always
-          User=root
+          User={{ user }}
 
           [Install]
           WantedBy=multi-user.target
@@ -64,6 +75,6 @@
 
     - name: Enable and start Open-WebUI service
       systemd:
-        name: open-webui
+        name: "{{ service_name }}"
         enabled: yes
         state: started
