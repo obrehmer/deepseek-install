@@ -2,7 +2,7 @@
 
 ### prerequisites
 
-You need a Ubuntu > 22 host and root access.
+You need an Ubuntu > 22 host and root access.
 
 
 ### Installation
