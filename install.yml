@@ -3,11 +3,10 @@
   name: install deepseek
   become: yes
   vars:
-    python_packages:
+    packages:
       - python3
       - python3-venv
       - python3-pip
-    system_packages:
       - git
       - curl
       - ffmpeg
@@ -28,12 +27,7 @@
 
     - name: install pkgs
       apt:
-        name: "{{ system_packages }}"
-        state: present
-
-    - name: install pkgs
-      apt:
-        name: "{{ python_packages }}"
+        name: "{{ packages }}"
         state: present
 
     - name: install ollama
@@ -62,11 +56,11 @@
       copy:
         dest: "{{ env_file }}"
         content: |
-          ENABLE_SIGNUP=yes
-          AUTH_ALLOW_REGISTRATION=true
-          WEBUI_AUTH_MODE=local
-          NEXT_PUBLIC_AUTH_DISABLE_SIGNUP=false
-          NEXT_PUBLIC_AUTH_DISABLE_LOGIN=false
+#          ENABLE_SIGNUP=yes
+#          AUTH_ALLOW_REGISTRATION=true
+#          WEBUI_AUTH_MODE=local
+#          NEXT_PUBLIC_AUTH_DISABLE_SIGNUP=false
+#          NEXT_PUBLIC_AUTH_DISABLE_LOGIN=false
       notify: Restart Open-WebUI
 
     - name: Create systemd service file for Open-WebUI
