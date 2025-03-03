@@ -34,7 +34,7 @@
       raw: curl -fsSL https://ollama.com/install.sh | sh
 
     - name: enable and start ollama
-      service:                                                                             
+      service:
         name: ollama
         state: started
         enabled: true
