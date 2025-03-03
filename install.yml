@@ -44,6 +44,18 @@
       async: 10
       poll: 0
 
+    - name: pull other model
+      shell: ollama pull {{ item }}  >/dev/null 2>&1 &
+      loop:
+        - smollm2:latest
+        - granite3-moe:latest
+        - llama3.2:latest
+        - smollm2:latest
+        - mistral-nemo:latest
+      async: 10
+      poll: 0
+
+
     - name: Create a Python virtual environment
       command: python3 -m venv "{{ venv_path }}"
       args:
