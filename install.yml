@@ -124,6 +124,16 @@
         - 80
         - 22
 
+    - name: set iptables rules
+      iptables:
+        chain: INPUT
+        protocol: all
+        source: 127.0.0.1
+        jump: ACCEPT
+        action: insert
+        comment: Allow incoming traffic from localhost
+
+
     - name: Drop all other incoming connections
       iptables:
         chain: INPUT
