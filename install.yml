@@ -40,11 +40,33 @@
     - name: install ollama
       raw: curl -fsSL https://ollama.com/install.sh | sh
 
-    - name: enable and start ollama
-      service:
+    - name: Create systemd service file for ollama
+      copy:
+        dest: "/etc/systemd/system/ollama.service"
+        content: |
+          [Unit]
+          Description=Ollama Service
+          After=network-online.target
+          [Service]
+          ExecStart=/usr/local/bin/ollama serve
+          User=ollama
+          Group=ollama
+          Restart=always
+          RestartSec=3
+          Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+          Environment="OLLAMA_HOST=0.0.0.0"
+          [Install]
+          WantedBy=default.target
+      notify: Restart ollama
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+
+    - name: Enable and start ollama service
+      systemd:
         name: ollama
+        enabled: yes
         state: started
-        enabled: true
 
     - name: run model
       shell: ollama run deepseek-r1:7b >/dev/null 2>&1 &
@@ -134,6 +156,12 @@
         comment: Allow incoming traffic from localhost
 
 
+    - name: Allow related and established connections
+      iptables:
+        chain: INPUT
+        ctstate: ESTABLISHED,RELATED
+        jump: ACCEPT
+
     - name: Drop all other incoming connections
       iptables:
         chain: INPUT
@@ -143,4 +171,9 @@
     - name: Restart Open-WebUI
       systemd:
         name: "{{ service_name }}"
+        state: restarted
+
+    - name: Restart ollama
+      systemd:
+        name: ollama
         state: restarted
