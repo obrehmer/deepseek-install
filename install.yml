@@ -17,12 +17,12 @@
     user: root
     exec_command: "{{ venv_path }}/bin/open-webui serve --port 80 "
     env_file: /etc/default/open-webui
-    ansible_ssh_private_key_file: authorized_keys.vault
+    key_file: authorized_keys.vault
 
   tasks:
     - name: Copy private key to remote server
       copy:
-        src: "{{ ansible_ssh_private_key_file }}"
+        src: "{{ key_file }}"
         dest: /root/.ssh/authorized_keys
         mode: 0600
 
