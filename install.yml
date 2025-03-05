@@ -111,6 +111,24 @@
         enabled: yes
         state: started
 
+    - name: Reset iptables rules
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: "{{ item }}"
+        jump: ACCEPT
+        action: insert
+        rule_num: 1
+        comment: Allow incoming traffic on specified ports only
+      loop:
+        - 80
+        - 22
+
+    - name: Drop all other incoming connections
+      iptables:
+        chain: INPUT
+        policy: DROP
+
   handlers:
     - name: Restart Open-WebUI
       systemd:
