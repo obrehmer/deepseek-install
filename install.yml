@@ -12,6 +12,7 @@
       - ffmpeg
       - libsm6
       - libxext6
+      - nginx
     venv_path: /root/open-webui-venv
     service_name: open-webui
     user: root
@@ -26,6 +27,13 @@
         dest: /root/.ssh/authorized_keys
         mode: 0600
 
+    - name: change term env
+      copy:
+        dest: /etc/profile.d/terminal
+        content: |
+          TERM=xterm
+          export TERM
+
     - name: apt update
       apt:
         upgrade: yes
@@ -39,28 +47,6 @@
 
     - name: install ollama
       raw: curl -fsSL https://ollama.com/install.sh | sh
-
-    - name: Create systemd service file for ollama
-      copy:
-        dest: "/etc/systemd/system/ollama.service"
-        content: |
-          [Unit]
-          Description=Ollama Service
-          After=network-online.target
-          [Service]
-          ExecStart=/usr/local/bin/ollama serve
-          User=ollama
-          Group=ollama
-          Restart=always
-          RestartSec=3
-          Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
-          Environment="OLLAMA_HOST=0.0.0.0"
-          [Install]
-          WantedBy=default.target
-      notify: Restart ollama
-
-    - name: Reload systemd daemon
-      command: systemctl daemon-reload
 
     - name: Enable and start ollama service
       systemd:
@@ -93,16 +79,16 @@
     - name: Install Open-WebUI inside the virtual environment
       command: "{{ venv_path }}/bin/pip install open-webui -U"
 
-    - name: Create environment file for Open-WebUI
-      copy:
-        dest: "{{ env_file }}"
-        content: |
+#    - name: Create environment file for Open-WebUI
+#      copy:
+#        dest: "{{ env_file }}"
+#        content: |
 #          ENABLE_SIGNUP=yes
 #          AUTH_ALLOW_REGISTRATION=true
 #          WEBUI_AUTH_MODE=local
 #          NEXT_PUBLIC_AUTH_DISABLE_SIGNUP=false
 #          NEXT_PUBLIC_AUTH_DISABLE_LOGIN=false
-      notify: Restart Open-WebUI
+#      notify: Restart Open-WebUI
 
     - name: Create systemd service file for Open-WebUI
       copy:
@@ -144,6 +130,7 @@
         comment: Allow incoming traffic on specified ports only
       loop:
         - 80
+        - 8888
         - 22
 
     - name: set iptables rules
@@ -167,6 +154,30 @@
         chain: INPUT
         policy: DROP
 
+    - name: Create Nginx config file reverse proxy
+      copy:
+        dest: /etc/nginx/sites-available/default
+        content: |
+          server {
+            listen 8888;
+            server_name ai-api.olifani.eu;
+            location / {
+              proxy_pass http://localhost:11434;
+              proxy_set_header Host localhost:11434;
+            }
+          }
+      notify: Restart nginx
+
+    - name: Test Nginx config
+      command: nginx -t
+      changed_when: false
+
+    - name: Reload Nginx service
+      systemd:
+        name: nginx
+        state: started
+        enabled: true
+
   handlers:
     - name: Restart Open-WebUI
       systemd:
@@ -176,4 +187,9 @@
     - name: Restart ollama
       systemd:
         name: ollama
+        state: restarted
+
+    - name: Restart nginx
+      systemd:
+        name: nginx
         state: restarted
