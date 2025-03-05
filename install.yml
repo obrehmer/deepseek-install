@@ -111,7 +111,7 @@
         enabled: yes
         state: started
 
-    - name: Reset iptables rules
+    - name: set iptables rules
       iptables:
         chain: INPUT
         protocol: tcp
