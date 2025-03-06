@@ -5,7 +5,6 @@
   vars:
     webui_port: 80
     api_port: 8888
-    api_servername: ai-api.olifani.eu
     packages:
       - python3
       - python3-venv
@@ -162,8 +161,7 @@
         dest: /etc/nginx/sites-available/default
         content: |
           server {
-            listen {{ api_port}};
-            server_name {{ api_servername}};
+            listen {{ api_port}} default_server;
             location / {
               proxy_pass http://localhost:11434;
               proxy_set_header Host localhost:11434;
