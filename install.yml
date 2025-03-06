@@ -31,7 +31,7 @@
 
     - name: change term env
       copy:
-        dest: /etc/profile.d/terminal
+        dest: /etc/profile.d/terminal.sh
         content: |
           TERM=xterm
           export TERM
