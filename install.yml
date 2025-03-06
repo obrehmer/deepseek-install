@@ -3,6 +3,9 @@
   name: install deepseek
   become: yes
   vars:
+    webui_port: 80
+    api_port: 8888
+    api_servername: ai-api.olifani.eu
     packages:
       - python3
       - python3-venv
@@ -16,7 +19,7 @@
     venv_path: /root/open-webui-venv
     service_name: open-webui
     user: root
-    exec_command: "{{ venv_path }}/bin/open-webui serve --port 80 "
+    exec_command: "{{ venv_path }}/bin/open-webui serve --port {{ webui_port }} "
     env_file: /etc/default/open-webui
     key_file: authorized_keys.vault
 
@@ -129,8 +132,8 @@
         rule_num: 1
         comment: Allow incoming traffic on specified ports only
       loop:
-        - 80
-        - 8888
+        - "{{ webui_port }}"
+        - "{{ api_port }}"
         - 22
 
     - name: set iptables rules
@@ -159,8 +162,8 @@
         dest: /etc/nginx/sites-available/default
         content: |
           server {
-            listen 8888;
-            server_name ai-api.olifani.eu;
+            listen {{ api_port}};
+            server_name {{ api_servername}};
             location / {
               proxy_pass http://localhost:11434;
               proxy_set_header Host localhost:11434;
