@@ -54,11 +54,6 @@
         enabled: yes
         state: started
 
-    - name: run model
-      shell: ollama run deepseek-r1:7b >/dev/null 2>&1 &
-      async: 10
-      poll: 0
-
     - name: pull other model
       shell: ollama pull {{ item }}  >/dev/null 2>&1 &
       loop:
@@ -67,6 +62,7 @@
         - llama3.2:latest
         - mistral-nemo:latest
         - dolphin-phi:latest
+        - deepseek-r1:7b
       async: 10
       poll: 0
 
