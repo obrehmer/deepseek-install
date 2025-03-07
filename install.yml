@@ -65,7 +65,6 @@
         - smollm2:latest
         - granite3-moe:latest
         - llama3.2:latest
-        - smollm2:latest
         - mistral-nemo:latest
         - dolphin-phi:latest
       async: 10
