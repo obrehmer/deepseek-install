@@ -8,7 +8,6 @@
     packages:
       - python3
       - python3-venv
-      - python3-pip
       - git
       - curl
       - ffmpeg
@@ -63,6 +62,7 @@
         - mistral-nemo:latest
         - dolphin-phi:latest
         - deepseek-r1:7b
+        - gemma:7b
       async: 10
       poll: 0
 
@@ -75,7 +75,12 @@
     - name: Create a Python virtual environment
       command: python3 -m venv "{{ venv_path }}"
       args:
-        creates: "{{ venv_path }}"
+        creates: "{{ venv_path }}/bin/activate"
+
+    - name: ensure pip
+      command: "{{ venv_path }}/bin/python -m ensurepip"
+      args:
+        creates: "{{ venv_path }}/bin/pip"
 
     - name: Install Open-WebUI inside the virtual environment
       command: "{{ venv_path }}/bin/pip install open-webui -U"
