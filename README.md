@@ -1,4 +1,4 @@
-# Install deepseek with web-ui
+# Install ollama with web-ui
 
 ### prerequisites
 
