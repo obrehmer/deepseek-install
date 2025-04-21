@@ -31,7 +31,7 @@ You can modify the list of LLMs on the server by changing the variable
 ```
 ollama_models_desired
 ```
-
+Models that are not in this variable will be uninstalled!
 
 
 
