@@ -43,8 +43,8 @@
       - llama3.2:latest
       - mistral-nemo:latest
       - deepseek-r1:7b
-      - gemma:7b
       - dolphin-phi:latest
+      - gemma:7b
     api: false
 
   tasks:
@@ -91,6 +91,15 @@
       shell: ollama list | egrep -v ID | awk '{print $1}'
       register: ollama_models
       changed_when: false
+
+    - name: Calculate models to uninstall (models not in ollama_models_desired)
+      set_fact:
+        models_to_uninstall: "{{ ollama_models.stdout.splitlines() | difference(ollama_models_desired) }}"
+
+    - name: Uninstall models not in ollama_models_desired
+      shell: ollama rm {{ item }} >/dev/null 2>&1 &
+      loop: "{{ models_to_uninstall }}"
+      when: models_to_uninstall | length > 0
 
     - name: pull other model
       shell: ollama pull {{ item }}  >/dev/null 2>&1 &
