@@ -5,7 +5,7 @@
 You need an Ubuntu > 22 host and root access.
 
 
-### id_rsa.pu into vault
+### id_rsa.pub into vault
 
 Create the ansible vault file from your ssh pubkey. 
 
@@ -19,6 +19,17 @@ You can also put the password in a file outside of the git repo and set this in 
 
 ```
 vault_password_file = ~/.vaultpass_ai
+```
+
+This pubkey will be added to the root account on the server.
+
+
+### Change the LLMs
+
+You can modify the list of LLMs on the server by changing the variable
+
+```
+ollama_models_desired
 ```
 
 
