@@ -14,6 +14,7 @@
       - ffmpeg
       - libsm6
       - libxext6
+      - iptables-persistent
     venv_path: /root/open-webui-venv
     service_name: open-webui
     user: root
@@ -21,6 +22,30 @@
     key_file: authorized_keys.vault
     api: false
     cloudflare: true
+    cloudflare_sources:
+      - 173.245.48.0/20
+      - 103.21.244.0/22
+      - 103.22.200.0/22
+      - 103.31.4.0/22
+      - 141.101.64.0/18
+      - 108.162.192.0/18
+      - 190.93.240.0/20
+      - 188.114.96.0/20
+      - 197.234.240.0/22
+      - 198.41.128.0/17
+      - 162.158.0.0/15
+      - 104.16.0.0/13
+      - 104.24.0.0/14
+      - 172.64.0.0/13
+      - 131.0.72.0/22
+    ollama_models_desired:
+      - smollm2:latest
+      - granite3-moe:latest
+      - llama3.2:latest
+      - mistral-nemo:latest
+      - dolphin-phi:latest
+      - deepseek-r1:7b
+      - gemma:7b
 
   tasks:
     - name: Copy private key to remote server
@@ -47,8 +72,14 @@
         name: "{{ packages }}"
         state: present
 
+    - name: check if ollama is in PATH
+      command: which ollama
+      register: ollama_check
+      ignore_errors: true
+
     - name: install ollama
       raw: curl -fsSL https://ollama.com/install.sh | sh
+      when: ollama_check.rc != 0
 
     - name: Enable and start ollama service
       systemd:
@@ -56,16 +87,15 @@
         enabled: yes
         state: started
 
+    - name: get list of installed ollama models
+      command: ollama list
+      register: ollama_models
+      changed_when: false
+
     - name: pull other model
       shell: ollama pull {{ item }}  >/dev/null 2>&1 &
-      loop:
-        - smollm2:latest
-        - granite3-moe:latest
-        - llama3.2:latest
-        - mistral-nemo:latest
-        - dolphin-phi:latest
-        - deepseek-r1:7b
-        - gemma:7b
+      loop: "{{ ollama_models_desired }}"
+      when: item not in ollama_models.stdout
       async: 10
       poll: 0
 
@@ -86,8 +116,15 @@
       args:
         creates: "{{ venv_path }}/bin/pip"
 
+    - name: Check if open-webui is already installed
+      command: "{{ venv_path }}/bin/pip show open-webui"
+      register: openwebui_check
+      failed_when: false
+      changed_when: false
+
     - name: Install Open-WebUI inside the virtual environment
       command: "{{ venv_path }}/bin/pip install open-webui -U"
+      when: openwebui_check.rc != 0
 
     - name: Create systemd service file for Open-WebUI
       copy:
@@ -106,10 +143,10 @@
 
           [Install]
           WantedBy=multi-user.target
-      notify: Restart Open-WebUI
+      notify: 
+        - Reload systemd daemon
+        - Restart Open-WebUI
 
-    - name: Reload systemd daemon
-      command: systemctl daemon-reload
 
     - name: Enable and start Open-WebUI service
       systemd:
@@ -146,22 +183,7 @@
         action: insert
         rule_num: 1
         comment: Allow HTTP (port 80) from Cloudflare only
-      loop:
-        - 173.245.48.0/20
-        - 103.21.244.0/22
-        - 103.22.200.0/22
-        - 103.31.4.0/22
-        - 141.101.64.0/18
-        - 108.162.192.0/18
-        - 190.93.240.0/20
-        - 188.114.96.0/20
-        - 197.234.240.0/22
-        - 198.41.128.0/17
-        - 162.158.0.0/15
-        - 104.16.0.0/13
-        - 104.24.0.0/14
-        - 172.64.0.0/13
-        - 131.0.72.0/22
+      loop: "{{ cloudflare_sources }}"
       when: cloudflare
 
     - name: remove webui_port for all if cloudflare is true
@@ -176,7 +198,6 @@
         state: absent
       when: cloudflare
 
-
     - name: allow webui_port for all if cloudflare is false
       iptables:
         chain: INPUT
@@ -187,6 +208,22 @@
         rule_num: 1
         comment: Allow web UI access from anywhere
       when: not cloudflare
+
+
+    - name: remove allow web_ui only from Cloudflare IP ranges if cloudflare is false
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: "{{ webui_port }}"
+        source: "{{ item }}"
+        jump: ACCEPT
+        action: insert
+        rule_num: 1
+        comment: Allow HTTP (port 80) from Cloudflare only
+        state: absent
+      loop: "{{ cloudflare_sources }}"
+      when: not cloudflare
+
 
     - name: set iptables rules
       iptables:
@@ -208,6 +245,9 @@
       iptables:
         chain: INPUT
         policy: DROP
+
+    - name: Save iptables rules (IPv4)
+      shell: iptables-save > /etc/iptables/rules.v4
 
     - name: Create Nginx config file reverse proxy
       copy:
@@ -255,3 +295,6 @@
       systemd:
         name: nginx
         state: stopped
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
