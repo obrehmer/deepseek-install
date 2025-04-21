@@ -5,6 +5,25 @@
 You need an Ubuntu > 22 host and root access.
 
 
+### id_rsa.pu into vault
+
+Create the ansible vault file from your ssh pubkey. 
+
+```
+ansible-vault encrypt ~/.ssh/id_rsa.pub --output authorized_keys.vault
+
+```
+
+You will now be asked for a Vault password. You will need this password later for decryption or for the playbook run.
+You can also put the password in a file outside of the git repo and set this in the ansible.cfg, e.g.
+
+```
+vault_password_file = ~/.vaultpass_ai
+```
+
+
+
+
 ### Installation
 
 just run (change to your IP number)
