@@ -5,6 +5,7 @@
   vars:
     webui_port: 80
     api_port: 8888
+    ssh_port: 22
     packages:
       - python3
       - python3-venv
@@ -18,6 +19,8 @@
     user: root
     exec_command: "{{ venv_path }}/bin/open-webui serve --port {{ webui_port }} "
     key_file: authorized_keys.vault
+    api: false
+    cloudflare: true
 
   tasks:
     - name: Copy private key to remote server
@@ -71,6 +74,7 @@
         name: nginx
         state: present
       notify: stop nginx  
+      when: api
 
     - name: Create a Python virtual environment
       command: python3 -m venv "{{ venv_path }}"
@@ -113,6 +117,14 @@
         enabled: yes
         state: started
 
+
+    - name: set allowed ports based on api
+      set_fact:
+        allowed_ports: >-
+          {{
+            [ssh_port] + ([api_port] if api else [])
+          }}
+
     - name: set iptables rules
       iptables:
         chain: INPUT
@@ -122,10 +134,59 @@
         action: insert
         rule_num: 1
         comment: Allow incoming traffic on specified ports only
+      loop: "{{ allowed_ports }}"
+
+    - name: allow web_ui only from Cloudflare IP ranges
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: "{{ webui_port }}"
+        source: "{{ item }}"
+        jump: ACCEPT
+        action: insert
+        rule_num: 1
+        comment: Allow HTTP (port 80) from Cloudflare only
       loop:
-        - "{{ webui_port }}"
-        - "{{ api_port }}"
-        - 22
+        - 173.245.48.0/20
+        - 103.21.244.0/22
+        - 103.22.200.0/22
+        - 103.31.4.0/22
+        - 141.101.64.0/18
+        - 108.162.192.0/18
+        - 190.93.240.0/20
+        - 188.114.96.0/20
+        - 197.234.240.0/22
+        - 198.41.128.0/17
+        - 162.158.0.0/15
+        - 104.16.0.0/13
+        - 104.24.0.0/14
+        - 172.64.0.0/13
+        - 131.0.72.0/22
+      when: cloudflare
+
+    - name: remove webui_port for all if cloudflare is true
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: "{{ webui_port }}"
+        jump: ACCEPT
+        action: insert
+        rule_num: 1
+        comment: Allow web UI access from anywhere
+        state: absent
+      when: cloudflare
+
+
+    - name: allow webui_port for all if cloudflare is false
+      iptables:
+        chain: INPUT
+        protocol: tcp
+        destination_port: "{{ webui_port }}"
+        jump: ACCEPT
+        action: insert
+        rule_num: 1
+        comment: Allow web UI access from anywhere
+      when: not cloudflare
 
     - name: set iptables rules
       iptables:
@@ -160,16 +221,19 @@
             }
           }
       notify: Restart nginx
+      when: api
 
     - name: Test Nginx config
       command: nginx -t
       changed_when: false
+      when: api
 
     - name: Enable Nginx service
       systemd:
         name: nginx
         state: started
         enabled: true
+      when: api
 
   handlers:
     - name: Restart Open-WebUI
